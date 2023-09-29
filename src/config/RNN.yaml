@@ -1,0 +1,15 @@
+
+Create_data: 
+  input_size: 1
+  output_size: 1
+  sequence_length: 10
+  num_samples: 100
+train:
+  batch_size: 16
+  num_epochs: 1000
+  early_stopping_patience: 20
+  learning_rate: 0.001
+  hidden_size: 64
+  
+
+    
