@@ -2,7 +2,8 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import os
-from model.build_model import CustomRNN
+from model.build_model import CustomRNN  # Assuming you have CustomRNN class in build_model module
+
 class RNN_task:
     def __init__(self, config):
         self.input_size = config['input_size']
@@ -14,15 +15,17 @@ class RNN_task:
         self.hidden_size = config['train']['hidden_size']
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-        # Định nghĩa mô hình RNN
-        self.model = self.CustomRNN(self.input_size, self.hidden_size, self.output_size)
+        # Định nghĩa mô hình RNN (using self to access CustomRNN class)
+        self.model = CustomRNN(self.input_size, self.hidden_size, self.output_size)  # Fixed line
         self.criterion = nn.MSELoss()
         self.optimizer = optim.Adam(self.model.parameters(), lr=self.learning_rate)
-    def training(self, X_train, y_train):
+        self.Create_data = config['Create_data']
+
+    def training(self, X_train, y_train, X_dev, y_dev):
         patience_counter = 0
         best_loss = float('inf')
-
         for epoch in range(self.num_epochs):
+            self.model.train()
             for i in range(0, len(X_train), self.batch_size):
                 X_batch = X_train[i:i + self.batch_size].to(self.device)
                 y_batch = y_train[i:i + self.batch_size].to(self.device)
@@ -32,39 +35,39 @@ class RNN_task:
                 loss.backward()
                 self.optimizer.step()
 
-            if (epoch + 1) % 100 == 0:
-                print(f'Epoch [{epoch + 1}/{self.num_epochs}], Loss: {loss.item():.4f}')
+            # Đánh giá mô hình trên tập dev
+            self.model.eval()
+            with torch.no_grad():
+                dev_loss = 0
+                for i in range(0, len(X_dev), self.batch_size):
+                    X_batch_dev = X_dev[i:i + self.batch_size].to(self.device)
+                    y_batch_dev = y_dev[i:i + self.batch_size].to(self.device)
+                    dev_outputs = self.model(X_batch_dev)
+                    dev_loss += self.criterion(dev_outputs.view(-1, self.output_size), y_batch_dev.view(-1, self.output_size)).item()
+                dev_loss /= len(X_dev) / self.batch_size
 
-            # Early Stopping
-            if loss < best_loss:
-                best_loss = loss
-                patience_counter = 0
-                # Lưu checkpoint
-                torch.save(self.model.state_dict(), 'rnn_checkpoint.pth')
-            else:
-                patience_counter += 1
-                if patience_counter >= self.early_stopping_patience:
-                    print("Early stopping...")
-                    break
+                print(f'Epoch [{epoch + 1}/{self.num_epochs}], Train Loss: {loss.item():.4f}, Dev Loss: {dev_loss:.4f}')
 
-        # Load mô hình tốt nhất từ checkpoint
-        self.model.load_state_dict(torch.load('rnn_checkpoint.pth'))
+                # Lưu checkpoint nếu có kết quả tốt nhất trên tập dev
+                if dev_loss < best_loss:
+                    best_loss = dev_loss
+                    patience_counter = 0
+                    # Lưu checkpoint
+                    torch.save({
+                        'epoch': epoch,
+                        'model_state_dict': self.model.state_dict(),
+                        'optimizer_state_dict': self.optimizer.state_dict(),
+                        'loss': best_loss
+                    }, 'best_rnn_checkpoint.pth')
+                else:
+                    patience_counter += 1
+                    if patience_counter >= self.early_stopping_patience:
+                        print("Early stopping...")
+                        break
+        checkpoint = torch.load('best_rnn_checkpoint.pth')
+        self.model.load_state_dict(checkpoint['model_state_dict'])
+        self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+        best_epoch = checkpoint['epoch']
+        best_loss = checkpoint['loss']
+        print(f'Best model loaded from epoch {best_epoch} with loss: {best_loss:.4f}')
         self.model.eval()
-    def forward_one_step(self, x):
-        with torch.no_grad():
-            h = torch.zeros(1, self.hidden_size, dtype=torch.float32, device=self.device)
-            h = h.view(1, 1, -1)
-            x = x.view(1, 1, -1)
-            out, _ = self.model(x, h)
-            return out.view(1, -1).cpu().numpy()
-
-rnn_task = RNN_task(config)
-
-# Huấn luyện mô hình
-rnn_task.training(X_train, y_train)
-
-# Dự đoán đầu ra cho một ví dụ
-test_input = torch.randn(sequence_length, config['input_size'])
-predicted_output = rnn_task.forward_one_step(test_input)
-print("Predicted Output:")
-print(predicted_output)
