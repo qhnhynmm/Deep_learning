@@ -1,4 +1,3 @@
-
 Create_data: 
   input_size: 1
   output_size: 1
@@ -10,6 +9,6 @@ train:
   early_stopping_patience: 20
   learning_rate: 0.001
   hidden_size: 64
-  
+task: "RNN"
 
     
