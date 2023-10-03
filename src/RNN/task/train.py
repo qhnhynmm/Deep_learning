@@ -1,8 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import os
-from model.build_model import CustomRNN  # Assuming you have CustomRNN class in build_model module
+from RNN.model.model import SimpleRNN  # Import mô hình SimpleRNN từ module model
 
 class RNN_task:
     def __init__(self, config):
@@ -15,11 +14,10 @@ class RNN_task:
         self.hidden_size = config['train']['hidden_size']
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-        # Định nghĩa mô hình RNN (using self to access CustomRNN class)
-        self.model = CustomRNN(self.input_size, self.hidden_size, self.output_size)  # Fixed line
+        # Định nghĩa mô hình RNN (sử dụng SimpleRNN từ module model)
+        self.model = SimpleRNN(self.input_size, self.hidden_size, self.output_size).to(self.device)
         self.criterion = nn.MSELoss()
         self.optimizer = optim.Adam(self.model.parameters(), lr=self.learning_rate)
-        self.Create_data = config['Create_data']
 
     def training(self, X_train, y_train, X_dev, y_dev):
         patience_counter = 0
@@ -64,10 +62,3 @@ class RNN_task:
                     if patience_counter >= self.early_stopping_patience:
                         print("Early stopping...")
                         break
-        checkpoint = torch.load('best_rnn_checkpoint.pth')
-        self.model.load_state_dict(checkpoint['model_state_dict'])
-        self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-        best_epoch = checkpoint['epoch']
-        best_loss = checkpoint['loss']
-        print(f'Best model loaded from epoch {best_epoch} with loss: {best_loss:.4f}')
-        self.model.eval()
