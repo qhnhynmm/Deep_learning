@@ -1,24 +1,32 @@
+import os
+import yaml
 import argparse
+import logging
+import json
+from typing import Text
 import torch
-from utils.get_config import get_config
-from task import train
+import transformers
 
-parser = argparse.ArgumentParser()
-parser.add_argument("--config-file", type=str, required=True)
-args = parser.parse_args()
+from task.train import Classify_Task
+# from task.infer import Inference
 
-config = get_config(args.config_file)
-
-torch.manual_seed(1234)
-
-if config.task == 'RNN':
-    task = train(config)
-    train_loader = task.load_train_data()  # You need a method to load your training data
-    dev_loader = task.load_dev_data()  # You need a method to load your validation data
+def main(config_path: Text) -> None:
+    transformers.logging.set_verbosity_error()
+    logging.basicConfig(level=logging.INFO)
     
-    for epoch in range(config.num_epochs):
-        # Training
-        task.training(train_loader)
-        
-        # Evaluation
-        task.evaluate(dev_loader)
+    with open(config_path) as conf_file:
+        config = yaml.safe_load(conf_file)
+    
+    logging.info("Training started...")
+    Classify_Task(config).training()
+    logging.info("Training complete")
+    
+    logging.info('now evaluate on test data...')
+    # Inference(config).predict()
+    logging.info('task done!!!')
+if __name__ == '__main__':
+    args_parser = argparse.ArgumentParser()
+    args_parser.add_argument('--config', dest='config', required=True)
+    args = args_parser.parse_args()
+    
+    main(args.config)

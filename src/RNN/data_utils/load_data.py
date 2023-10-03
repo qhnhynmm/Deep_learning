@@ -1,11 +1,10 @@
 from torch.utils.data import DataLoader, Dataset
-from create_data import Create_data
-from typing import List, Dict, Optional, Any
+from create_data import CreateData
 
-class My_data_set(Dataset):
+class MyDataset(Dataset):
     def __init__(self, config):
-        self.create_data = Create_data(config)
-        self.X, self.y = self.create_data.create()
+        self.create_data = CreateData(config)
+        self.X, self.y = self.create_data()
 
     def __getitem__(self, index):
         X = self.X[index]
@@ -15,33 +14,26 @@ class My_data_set(Dataset):
     def __len__(self) -> int:
         return len(self.X)
 
-class Load_data:
+class LoadData:
     def __init__(self, config):
         self.batch_size = config['train']['batch_size']
-        self.data_X, self.data_y = My_data_set(config)
-        total_length = len(self.data_X)
+        self.data = MyDataset(config)
+        total_length = len(self.data)
         self.train = int(total_length * 0.8)
         self.dev = int(total_length * 0.1)
         self.test = total_length
 
-        self.data_train_X = self.data_X[:self.train]
-        self.data_train_y = self.data_y[:self.train]
-        self.data_test_X = self.data_X[self.train:self.train + self.dev]
-        self.data_test_y = self.data_y[self.train:self.train + self.dev]
-        self.data_dev_X = self.data_X[self.train + self.dev:self.train + self.dev + self.test]
-        self.data_dev_y = self.data_y[self.train + self.dev:self.train + self.dev + self.test]
-
     def load_train(self):
-        train_dataset = My_data_set(config)
-        train_loader = DataLoader(dataset=train_dataset, batch_size=self.batch_size, shuffle=True)
+        data_train = self.data[:self.train]
+        train_loader = DataLoader(dataset=data_train, batch_size=self.batch_size, shuffle=True)
         return train_loader
 
     def load_test(self):
-        test_dataset = My_data_set(config)
-        test_loader = DataLoader(dataset=test_dataset, batch_size=self.batch_size, shuffle=False)
+        data_test = self.data[self.train:self.train + self.dev]
+        test_loader = DataLoader(dataset=data_test, batch_size=self.batch_size, shuffle=True)
         return test_loader
 
     def load_dev(self):
-        dev_dataset = My_data_set(config)
-        dev_loader = DataLoader(dataset=dev_dataset, batch_size=self.batch_size, shuffle=False)
+        data_dev = self.data[self.train + self.dev:self.train + self.dev + self.test]
+        dev_loader = DataLoader(dataset=data_dev, batch_size=self.batch_size, shuffle=True)
         return dev_loader
