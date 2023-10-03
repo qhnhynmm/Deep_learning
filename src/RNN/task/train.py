@@ -1,25 +1,28 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from RNN.model.model import SimpleRNN  # Import mô hình SimpleRNN từ module model
-
+from model.model import SimpleRNN  # Import mô hình SimpleRNN từ module model
+from data_utils.load_data import LoadData
 class RNN_task:
     def __init__(self, config):
-        self.input_size = config['input_size']
-        self.output_size = config['output_size']
+        self.input_size = config['Create_data']['input_size']
+        self.output_size = config['Create_data']['output_size']
         self.batch_size = config['train']['batch_size']
         self.num_epochs = config['train']['num_epochs']
         self.early_stopping_patience = config['train']['early_stopping_patience']
         self.learning_rate = config['train']['learning_rate']
         self.hidden_size = config['train']['hidden_size']
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
+        self.data = LoadData(config)
         # Định nghĩa mô hình RNN (sử dụng SimpleRNN từ module model)
         self.model = SimpleRNN(self.input_size, self.hidden_size, self.output_size).to(self.device)
         self.criterion = nn.MSELoss()
         self.optimizer = optim.Adam(self.model.parameters(), lr=self.learning_rate)
 
-    def training(self, X_train, y_train, X_dev, y_dev):
+    def training(self):
+        X_train,y_train = self.data.load_train()
+        X_dev,y_dev = self.data.load_dev()
+        # X_test,y_test = self.data.load_test()
         patience_counter = 0
         best_loss = float('inf')
         for epoch in range(self.num_epochs):
